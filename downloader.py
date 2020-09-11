@@ -22,8 +22,12 @@ class Application(tk.Frame):
                             command=None)
         self.b2.pack()
         self.b3 = tk.Button(root, text='From clipboard', width=15,
-                            command=None)
+                            command=self.from_clipboard)
         self.b3.pack()
+
+    def from_clipboard(self):
+        clipboard = self.clipboard_get()
+        self.link.set(clipboard)
 
 
 if __name__ == '__main__':
