@@ -16,7 +16,7 @@ class Application(tk.Frame):
         self.listbox.pack()
 
         self.b1 = tk.Button(root, text='Get formats', width=15,
-                            command=None)
+                            command=self.get_info)
         self.b1.pack()
         self.b2 = tk.Button(root, text='Download', width=15,
                             command=None)
@@ -28,6 +28,21 @@ class Application(tk.Frame):
     def from_clipboard(self):
         clipboard = self.clipboard_get()
         self.link.set(clipboard)
+
+    def info_thread(self, ydl, videos):
+        video_info = ydl.extract_info(videos, download=False)
+        for f in video_info['formats']:
+            if f.get('ext') == 'mp4':
+                x = f.get('format')
+                self.formats[x] = f.get('format_id')
+                self.listbox.insert(tk.END, x)
+
+    def get_info(self):
+        self.listbox.delete(0, tk.END)
+        videos = self.link.get()
+        with youtube_dl.YoutubeDL({}) as ydl:
+            it = threading.Thread(target=self.info_thread, args=[ydl, videos])
+            it.start()
 
 
 if __name__ == '__main__':
