@@ -19,7 +19,7 @@ class Application(tk.Frame):
                             command=self.get_info)
         self.b1.pack()
         self.b2 = tk.Button(root, text='Download', width=15,
-                            command=None)
+                            command=self.download)
         self.b2.pack()
         self.b3 = tk.Button(root, text='From clipboard', width=15,
                             command=self.from_clipboard)
@@ -40,9 +40,29 @@ class Application(tk.Frame):
     def get_info(self):
         self.listbox.delete(0, tk.END)
         videos = self.link.get()
-        with youtube_dl.YoutubeDL({}) as ydl:
-            it = threading.Thread(target=self.info_thread, args=[ydl, videos])
+        with youtube_dl.YoutubeDL() as ydl:
+            it = threading.Thread(target=self.info_thread,
+                                  args=[ydl, videos])
             it.start()
+
+    def download(self):
+        if self.listbox.curselection() is None:
+            return
+
+        video_format = self.formats.get(
+            self.listbox.get(self.listbox.curselection())
+        )
+        ydl_opts = {
+            'format': f'{video_format}+bestaudio'
+        }
+        videos = [self.link.get()]
+        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            dt = threading.Thread(target=self.download_thread,
+                                  args=[ydl, videos])
+            dt.start()
+
+    def download_thread(self, ydl, videos):
+        ydl.download(videos)
 
 
 if __name__ == '__main__':
