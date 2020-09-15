@@ -10,20 +10,56 @@ class Application(tk.Frame):
         self.formats = {}
         self.link = tk.StringVar()
         self.link.set('http://youtube.com/watch?v=')
-        self.e1 = tk.Entry(root, textvariable=self.link, width=50)
-        self.e1.pack()
-        self.listbox = tk.Listbox(root)
-        self.listbox.pack()
+        self.link_frame = tk.Frame(root)
+        self.link_frame.pack(fill=tk.BOTH)
+        self.e1 = tk.Entry(self.link_frame,
+                           textvariable=self.link,
+                           font='Helvetica 22 bold',
+                           justify='center',
+                           relief='sunken')
+        self.e1.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
 
-        self.b1 = tk.Button(root, text='Get formats', width=15,
-                            command=self.get_info)
-        self.b1.pack()
-        self.b2 = tk.Button(root, text='Download', width=15,
-                            command=self.download)
-        self.b2.pack()
-        self.b3 = tk.Button(root, text='From clipboard', width=15,
-                            command=self.from_clipboard)
-        self.b3.pack()
+        self.format_frame = tk.Frame(root)
+        self.format_frame.pack(fill=tk.X, expand=1)
+
+        self.listbox = tk.Listbox(self.format_frame,
+                                  font='Helvetica 17 bold',
+                                  justify='center',
+                                  height=7,
+                                  bg='lightgray',
+                                  relief='sunken')
+        self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+
+        scroll1 = tk.Scrollbar(self.format_frame, command=self.listbox.yview)
+        scroll1.pack(side=tk.RIGHT, fill=tk.Y)
+        self.listbox.config(yscrollcommand=scroll1.set)
+
+        self.button_frame = tk.Frame(root)
+        self.button_frame.pack(fill=tk.X, expand=1)
+
+        buttons = {
+            'Get formats': self.get_info,
+            'Download': self.download,
+            'From clipboard': self.from_clipboard,
+            'Clear': None
+        }
+
+        for text, command in buttons.items():
+            tk.Button(self.button_frame, text=text, command=command,
+                      font='Helvetica 17 bold', relief='flat').pack(
+                side=tk.LEFT, fill=tk.BOTH, expand=1)
+
+        self.status_frame = tk.Frame(root)
+        self.status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        self.status = tk.Text(self.status_frame, height=10, bg='black',
+                              fg='white', wrap=tk.WORD, relief='sunken')
+        self.status.pack(fill=tk.X, side=tk.LEFT, expand=1)
+
+        scroll2 = tk.Scrollbar(self.status_frame, command=self.status.yview)
+        scroll2.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.status.config(yscrollcommand=scroll2.set)
 
     def from_clipboard(self):
         clipboard = self.clipboard_get()
@@ -69,6 +105,6 @@ if __name__ == '__main__':
     root = tk.Tk()
     root.title('Youtube Downloader')
     root.resizable(False, False)
-    root.geometry('300x300+100+100')
+    root.geometry('800x450+100+100')
     Application(root)
     root.mainloop()
