@@ -1,6 +1,25 @@
 import tkinter as tk
 import youtube_dl
 import threading
+import sys
+
+
+class StdoutRedirector():
+    def __init__(self, status):
+        self.status = status
+
+    def write(self, str_):
+        self.status.configure(state='normal')
+
+        if '\n' not in str_:
+            str_ += '\n'
+
+        self.status.insert('end', str_)
+        self.status.see('end')
+        self.status.configure(state='disabled')
+
+    def flush(self):
+        pass
 
 
 class Application(tk.Frame):
@@ -60,6 +79,8 @@ class Application(tk.Frame):
         scroll2.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.status.config(yscrollcommand=scroll2.set)
+
+        sys.stdout = StdoutRedirector(self.status)
 
     def from_clipboard(self):
         clipboard = self.clipboard_get()
