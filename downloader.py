@@ -60,7 +60,7 @@ class Application(tk.Frame):
             'Get formats': self.get_info,
             'Download': self.download,
             'From clipboard': self.from_clipboard,
-            'Clear': None
+            'Clear': self.clear_status
         }
 
         for text, command in buttons.items():
@@ -81,6 +81,11 @@ class Application(tk.Frame):
         self.status.config(yscrollcommand=scroll2.set)
 
         sys.stdout = StdoutRedirector(self.status)
+
+    def clear_status(self):
+        self.status.configure(state='normal')
+        self.status.delete('1.0', 'end')
+        self.status.configure(state='disabled')
 
     def from_clipboard(self):
         clipboard = self.clipboard_get()
