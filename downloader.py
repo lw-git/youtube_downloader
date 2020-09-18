@@ -10,11 +10,19 @@ class StdoutRedirector():
 
     def write(self, str_):
         self.status.configure(state='normal')
+        last_insert = self.status.tag_ranges('last_insert')
+        last_text = ''
+        if last_insert:
+            last_text = self.status.get(last_insert[0], last_insert[1])
 
         if '\n' not in str_:
             str_ += '\n'
 
-        self.status.insert('end', str_)
+        if '[download]' in str_ and 'ETA' in last_text:
+            self.status.delete(last_insert[0], last_insert[1])
+
+        self.status.tag_remove('last_insert', '1.0', 'end')
+        self.status.insert('end', str_, 'last_insert')
         self.status.see('end')
         self.status.configure(state='disabled')
 
