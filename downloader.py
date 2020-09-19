@@ -35,6 +35,7 @@ class Application(tk.Frame):
     def __init__(self, *args, **kwargs):
         tk.Frame.__init__(self, *args, **kwargs)
         self.formats = {}
+        self.video = 'mp4'
         self.link = tk.StringVar()
         self.link.set('http://youtube.com/watch?v=')
         self.link_frame = tk.Frame(root)
@@ -96,16 +97,27 @@ class Application(tk.Frame):
         self.status.configure(state='disabled')
 
     def from_clipboard(self):
-        clipboard = self.clipboard_get()
-        self.link.set(clipboard)
+        try:
+            clipboard = self.clipboard_get()
+        except:
+            self.clear_status()
+            print('[Error] Clipboard is empty')
+        else:
+            self.link.set(clipboard)
 
     def info_thread(self, ydl, videos):
-        video_info = ydl.extract_info(videos, download=False)
-        for f in video_info['formats']:
-            if f.get('ext') == 'mp4':
-                x = f.get('format')
-                self.formats[x] = f.get('format_id')
-                self.listbox.insert(tk.END, x)
+        with ydl:
+            try:
+                video_info = ydl.extract_info(videos, download=False)
+            except:
+                print('[Error] Incorrect link')
+            else:
+                for f in video_info['formats']:
+                    print(f)
+                    if f.get('ext') == self.video and bool(f.get('width')):
+                        x = f'{f.get("width")}x{f.get("height")}'
+                        self.formats[x] = f.get('format_id')
+                        self.listbox.insert(tk.END, x)
 
     def get_info(self):
         self.listbox.delete(0, tk.END)
@@ -116,20 +128,23 @@ class Application(tk.Frame):
             it.start()
 
     def download(self):
-        if self.listbox.curselection() is None:
-            return
+        self.clear_status()
+        try:
+            video_format = self.formats.get(
+                self.listbox.get(self.listbox.curselection())
+            )
+        except:
+            print('[Error] Format not chosen')
+        else:
+            ydl_opts = {
+                'format': f'{video_format}+bestaudio[ext=m4a]/bestaudio'
+            }
+            videos = [self.link.get()]
 
-        video_format = self.formats.get(
-            self.listbox.get(self.listbox.curselection())
-        )
-        ydl_opts = {
-            'format': f'{video_format}+bestaudio'
-        }
-        videos = [self.link.get()]
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            dt = threading.Thread(target=self.download_thread,
-                                  args=[ydl, videos])
-            dt.start()
+            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                dt = threading.Thread(target=self.download_thread,
+                                      args=[ydl, videos])
+                dt.start()
 
     def download_thread(self, ydl, videos):
         ydl.download(videos)
