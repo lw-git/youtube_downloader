@@ -36,6 +36,8 @@ class Application(tk.Frame):
         tk.Frame.__init__(self, *args, **kwargs)
         self.formats = {}
         self.video = 'mp4'
+
+        # ================= Link Frame =====================
         self.link = tk.StringVar()
         self.link.set('http://youtube.com/watch?v=')
         self.link_frame = tk.Frame(root)
@@ -46,6 +48,29 @@ class Application(tk.Frame):
                            justify='center',
                            relief='sunken')
         self.e1.pack(side=tk.LEFT, fill=tk.BOTH, expand=1)
+
+        # ================= Choice Frame =====================
+        self.choice_frame = tk.Frame(root)
+        self.choice_frame.pack(fill=tk.X, expand=1)
+        self.choice_frame.config(relief='sunken')
+        self.choice = tk.Radiobutton(self.choice_frame)
+        self.download_type = tk.IntVar()
+        self.download_type.set(0)
+        tk.Label(self.choice_frame, text='Download:',
+                 font='Helvetica 15 bold').pack(side=tk.LEFT,
+            fill=tk.BOTH, expand=1)
+
+        radio_buttons = {
+            'Only audio': 0,
+            'Video + Audio': 1,
+        }
+
+        # ================= Format Frame =====================
+        for text, value in radio_buttons.items():
+            tk.Radiobutton(self.choice_frame, text=text,
+                           variable=self.download_type,
+                           font='Helvetica 13 bold', value=value).pack(
+                side=tk.LEFT, fill=tk.BOTH, expand=1)
 
         self.format_frame = tk.Frame(root)
         self.format_frame.pack(fill=tk.X, expand=1)
@@ -62,6 +87,7 @@ class Application(tk.Frame):
         scroll1.pack(side=tk.RIGHT, fill=tk.Y)
         self.listbox.config(yscrollcommand=scroll1.set)
 
+        # =================== Buttons Frame ===========================
         self.button_frame = tk.Frame(root)
         self.button_frame.pack(fill=tk.X, expand=1)
 
@@ -89,8 +115,10 @@ class Application(tk.Frame):
 
         self.status.config(yscrollcommand=scroll2.set)
 
+        # ====================== Stdout Redirect =======================
         sys.stdout = StdoutRedirector(self.status)
 
+    # ================== Methods on Buttons =========================
     def clear_status(self):
         self.status.configure(state='normal')
         self.status.delete('1.0', 'end')
@@ -105,20 +133,6 @@ class Application(tk.Frame):
         else:
             self.link.set(clipboard)
 
-    def info_thread(self, ydl, videos):
-        with ydl:
-            try:
-                video_info = ydl.extract_info(videos, download=False)
-            except:
-                print('[Error] Incorrect link')
-            else:
-                for f in video_info['formats']:
-                    print(f)
-                    if f.get('ext') == self.video and bool(f.get('width')):
-                        x = f'{f.get("width")}x{f.get("height")}'
-                        self.formats[x] = f.get('format_id')
-                        self.listbox.insert(tk.END, x)
-
     def get_info(self):
         self.listbox.delete(0, tk.END)
         videos = self.link.get()
@@ -129,22 +143,55 @@ class Application(tk.Frame):
 
     def download(self):
         self.clear_status()
-        try:
-            video_format = self.formats.get(
-                self.listbox.get(self.listbox.curselection())
-            )
-        except:
-            print('[Error] Format not chosen')
-        else:
-            ydl_opts = {
-                'format': f'{video_format}+bestaudio[ext=m4a]/bestaudio'
-            }
+        audio = {
+            'format': 'bestaudio/best',
+            'outtmpl': f'%(title)s.%(ext)s',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192', }]
+        }
+        if self.download_type.get() == 0:
             videos = [self.link.get()]
-
-            with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+            with youtube_dl.YoutubeDL(audio) as ydl:
                 dt = threading.Thread(target=self.download_thread,
                                       args=[ydl, videos])
                 dt.start()
+        else:
+            try:
+                video_format = self.formats.get(
+                    self.listbox.get(self.listbox.curselection())
+                )
+            except:
+                print('[Error] Format not chosen')
+            else:
+                ydl_opts = {
+                    'format': f'{video_format}+bestaudio[ext=m4a]/bestaudio'
+                }
+                videos = [self.link.get()]
+
+                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                    dt = threading.Thread(target=self.download_thread,
+                                          args=[ydl, videos])
+                    dt.start()
+
+    # ========================= Thread Methods =======================
+    def info_thread(self, ydl, videos):
+        with ydl:
+            try:
+                video_info = ydl.extract_info(videos, download=False)
+            except:
+                print('[Error] Incorrect link')
+            else:
+                if self.download_type.get() == 1:
+                    for f in video_info['formats']:
+                        if f.get('ext') == self.video and bool(f.get('width')):
+                            x = f"{f.get('width')}x{f.get('height')}"
+                            self.formats[x] = f.get('format_id')
+                            self.listbox.insert(tk.END, x)
+                elif self.download_type.get() == 0:
+                    x = 'mp3'
+                    self.listbox.insert(tk.END, x)
 
     def download_thread(self, ydl, videos):
         ydl.download(videos)
