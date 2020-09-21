@@ -2,6 +2,7 @@ import tkinter as tk
 import youtube_dl
 import threading
 import sys
+import re
 
 
 class StdoutRedirector():
@@ -118,6 +119,15 @@ class Application(tk.Frame):
         # ====================== Stdout Redirect =======================
         sys.stdout = StdoutRedirector(self.status)
 
+    # ================== Service Methods ============================
+    def clear_link(self, link):
+        exp = r"http(?:s?):\/\/(?:www\.)?youtu(?:be\.com\/watch\?v=|\.be\/)([\w\-\_]*)(&(amp;)?‌​[\w\?‌​=]*)?"
+        r = re.search(exp, link)
+        if r.group(1) is not None:
+            return f'https://www.youtube.com/watch?v={r.group(1)}'
+        else:
+            return None
+
     # ================== Methods on Buttons =========================
     def clear_status(self):
         self.status.configure(state='normal')
@@ -135,11 +145,12 @@ class Application(tk.Frame):
 
     def get_info(self):
         self.listbox.delete(0, tk.END)
-        videos = self.link.get()
-        with youtube_dl.YoutubeDL() as ydl:
-            it = threading.Thread(target=self.info_thread,
-                                  args=[ydl, videos])
-            it.start()
+        videos = self.clear_link(self.link.get())
+        if videos is not None:
+            with youtube_dl.YoutubeDL() as ydl:
+                it = threading.Thread(target=self.info_thread,
+                                      args=[ydl, videos], daemon=True)
+                it.start()
 
     def download(self):
         self.clear_status()
@@ -149,14 +160,15 @@ class Application(tk.Frame):
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '192', }]
+                'preferredquality': '192'}]
         }
         if self.download_type.get() == 0:
-            videos = [self.link.get()]
-            with youtube_dl.YoutubeDL(audio) as ydl:
-                dt = threading.Thread(target=self.download_thread,
-                                      args=[ydl, videos])
-                dt.start()
+            videos = self.clear_link(self.link.get())
+            if videos is not None:
+                with youtube_dl.YoutubeDL(audio) as ydl:
+                    dt = threading.Thread(target=self.download_thread,
+                                          args=[ydl, [videos]], daemon=True)
+                    dt.start()
         else:
             try:
                 video_format = self.formats.get(
@@ -168,12 +180,13 @@ class Application(tk.Frame):
                 ydl_opts = {
                     'format': f'{video_format}+bestaudio[ext=m4a]/bestaudio'
                 }
-                videos = [self.link.get()]
+                videos = self.clear_link(self.link.get())
 
-                with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-                    dt = threading.Thread(target=self.download_thread,
-                                          args=[ydl, videos])
-                    dt.start()
+                if videos is not None:
+                    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+                        dt = threading.Thread(target=self.download_thread,
+                                              args=[ydl, [videos]], daemon=True)
+                        dt.start()
 
     # ========================= Thread Methods =======================
     def info_thread(self, ydl, videos):
@@ -194,7 +207,11 @@ class Application(tk.Frame):
                     self.listbox.insert(tk.END, x)
 
     def download_thread(self, ydl, videos):
-        ydl.download(videos)
+        with ydl:
+            try:
+                ydl.download(videos)
+            except:
+                print('[Error] Error while downloading')
 
 
 if __name__ == '__main__':
